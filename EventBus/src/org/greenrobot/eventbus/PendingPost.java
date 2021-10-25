@@ -30,10 +30,18 @@ final class PendingPost {
         this.subscription = subscription;
     }
 
+    /**
+     * 获取重复利用 PendingPost，减小新建对象带来的开销
+     * @param subscription
+     * @param event
+     * @return
+     */
     static PendingPost obtainPendingPost(Subscription subscription, Object event) {
         synchronized (pendingPostPool) {
             int size = pendingPostPool.size();
+            //如果list中已存在 PendingPost
             if (size > 0) {
+                //取出列表最后一个 PendingPost，然后修改其属性
                 PendingPost pendingPost = pendingPostPool.remove(size - 1);
                 pendingPost.event = event;
                 pendingPost.subscription = subscription;
@@ -41,9 +49,14 @@ final class PendingPost {
                 return pendingPost;
             }
         }
+        //当list为空时，新建一个 PendingPost
         return new PendingPost(event, subscription);
     }
 
+    /**
+     * 释放 PendingPost。
+     * @param pendingPost
+     */
     static void releasePendingPost(PendingPost pendingPost) {
         pendingPost.event = null;
         pendingPost.subscription = null;

@@ -24,10 +24,12 @@ final class PendingPostQueue {
         if (pendingPost == null) {
             throw new NullPointerException("null cannot be enqueued");
         }
+        //如果队列中已经存在 PendingPost， 则加入队列中的末尾
         if (tail != null) {
             tail.next = pendingPost;
             tail = pendingPost;
         } else if (head == null) {
+            //如果队列为空，以队头的形式的加入队列，当然此时队列中只有一个元素，也就意味着也是队尾
             head = tail = pendingPost;
         } else {
             throw new IllegalStateException("Head present, but no tail");
@@ -35,6 +37,11 @@ final class PendingPostQueue {
         notifyAll();
     }
 
+    /**
+     * 取出头部
+     *
+     * @return
+     */
     synchronized PendingPost poll() {
         PendingPost pendingPost = head;
         if (head != null) {
@@ -46,6 +53,13 @@ final class PendingPostQueue {
         return pendingPost;
     }
 
+    /**
+     * 延时取出头部
+     *
+     * @param maxMillisToWait
+     * @return
+     * @throws InterruptedException
+     */
     synchronized PendingPost poll(int maxMillisToWait) throws InterruptedException {
         if (head == null) {
             wait(maxMillisToWait);

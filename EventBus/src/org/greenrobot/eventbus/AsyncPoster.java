@@ -18,6 +18,8 @@ package org.greenrobot.eventbus;
 
 /**
  * Posts events in background.
+ *
+ * 在后台发送事件
  * 
  * @author Markus
  */
@@ -34,15 +36,18 @@ class AsyncPoster implements Runnable, Poster {
     public void enqueue(Subscription subscription, Object event) {
         PendingPost pendingPost = PendingPost.obtainPendingPost(subscription, event);
         queue.enqueue(pendingPost);
+        //调用 executorService 来执行该 runnable
         eventBus.getExecutorService().execute(this);
     }
 
     @Override
     public void run() {
+        //从队列中取出
         PendingPost pendingPost = queue.poll();
         if(pendingPost == null) {
             throw new IllegalStateException("No pending post available");
         }
+        //调用订阅者来执行该事件
         eventBus.invokeSubscriber(pendingPost);
     }
 

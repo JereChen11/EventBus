@@ -20,6 +20,8 @@ import java.util.logging.Level;
 /**
  * Posts events in background.
  *
+ * 在后台发送事件
+ *
  * @author Markus
  */
 final class BackgroundPoster implements Runnable, Poster {

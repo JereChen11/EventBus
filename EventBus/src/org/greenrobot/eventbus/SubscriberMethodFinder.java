@@ -52,9 +52,17 @@ class SubscriberMethodFinder {
         this.ignoreGeneratedIndex = ignoreGeneratedIndex;
     }
 
+    /**
+     * 找到订阅方法
+     *
+     * @param subscriberClass
+     * @return
+     */
     List<SubscriberMethod> findSubscriberMethods(Class<?> subscriberClass) {
+        //先从缓存里找订阅方法
         List<SubscriberMethod> subscriberMethods = METHOD_CACHE.get(subscriberClass);
         if (subscriberMethods != null) {
+            //如果缓存里有，直接返回使用
             return subscriberMethods;
         }
 
@@ -64,9 +72,11 @@ class SubscriberMethodFinder {
             subscriberMethods = findUsingInfo(subscriberClass);
         }
         if (subscriberMethods.isEmpty()) {
+            //如果没有找到任何订阅方法，抛出异常，提醒用户使用 @Subscribe 方法来声明订阅方法
             throw new EventBusException("Subscriber " + subscriberClass
                     + " and its super classes have no public methods with the @Subscribe annotation");
         } else {
+            //如果订阅方法不为空，放入缓存中，以方便下次复用。
             METHOD_CACHE.put(subscriberClass, subscriberMethods);
             return subscriberMethods;
         }
@@ -147,6 +157,11 @@ class SubscriberMethodFinder {
         return getMethodsAndRelease(findState);
     }
 
+    /**
+     * 通过类的反射提取订阅信息
+     *
+     * @param findState
+     */
     private void findUsingReflectionInSingleClass(FindState findState) {
         Method[] methods;
         try {
@@ -170,10 +185,13 @@ class SubscriberMethodFinder {
         for (Method method : methods) {
             int modifiers = method.getModifiers();
             if ((modifiers & Modifier.PUBLIC) != 0 && (modifiers & MODIFIERS_IGNORE) == 0) {
+                //找到方法的参数
                 Class<?>[] parameterTypes = method.getParameterTypes();
                 if (parameterTypes.length == 1) {
+                    //通过注解找到 Subscribe
                     Subscribe subscribeAnnotation = method.getAnnotation(Subscribe.class);
                     if (subscribeAnnotation != null) {
+                        //第一个参数就是事件类型
                         Class<?> eventType = parameterTypes[0];
                         if (findState.checkAdd(method, eventType)) {
                             ThreadMode threadMode = subscribeAnnotation.threadMode();
@@ -267,6 +285,7 @@ class SubscriberMethodFinder {
             if (skipSuperClasses) {
                 clazz = null;
             } else {
+                //获取父类类名
                 clazz = clazz.getSuperclass();
                 String clazzName = clazz.getName();
                 // Skip system classes, this degrades performance.

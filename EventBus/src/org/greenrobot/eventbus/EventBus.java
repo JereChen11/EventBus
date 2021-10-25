@@ -139,10 +139,13 @@ public class EventBus {
      * ThreadMode} and priority.
      */
     public void register(Object subscriber) {
+        //找到订阅者类名
         Class<?> subscriberClass = subscriber.getClass();
+        //找到订阅方法
         List<SubscriberMethod> subscriberMethods = subscriberMethodFinder.findSubscriberMethods(subscriberClass);
         synchronized (this) {
             for (SubscriberMethod subscriberMethod : subscriberMethods) {
+                //遍历订阅方法，调用订阅方法
                 subscribe(subscriber, subscriberMethod);
             }
         }
@@ -178,6 +181,7 @@ public class EventBus {
         }
         subscribedEvents.add(eventType);
 
+        //如果是粘性事件
         if (subscriberMethod.sticky) {
             if (eventInheritance) {
                 // Existing sticky events of all subclasses of eventType have to be considered.
@@ -209,6 +213,7 @@ public class EventBus {
 
     /**
      * Checks if the current thread is running in the main thread.
+     * 检查当前线程是否在主线程中运行。
      * If there is no main thread support (e.g. non-Android), "true" is always returned. In that case MAIN thread
      * subscribers are always called in posting thread, and BACKGROUND subscribers are always called from a background
      * poster.
@@ -255,15 +260,18 @@ public class EventBus {
     public void post(Object event) {
         PostingThreadState postingState = currentPostingThreadState.get();
         List<Object> eventQueue = postingState.eventQueue;
+        //将该事件添加到事件队列中
         eventQueue.add(event);
 
         if (!postingState.isPosting) {
+            //检查是否在主线程中
             postingState.isMainThread = isMainThread();
             postingState.isPosting = true;
             if (postingState.canceled) {
                 throw new EventBusException("Internal error. Abort state was not reset");
             }
             try {
+                //遍历事件队列，将事件逐一发送
                 while (!eventQueue.isEmpty()) {
                     postSingleEvent(eventQueue.remove(0), postingState);
                 }
@@ -376,6 +384,13 @@ public class EventBus {
         return false;
     }
 
+    /**
+     * 发送单个事件
+     *
+     * @param event
+     * @param postingState
+     * @throws Error
+     */
     private void postSingleEvent(Object event, PostingThreadState postingState) throws Error {
         Class<?> eventClass = event.getClass();
         boolean subscriptionFound = false;
@@ -507,6 +522,7 @@ public class EventBus {
 
     void invokeSubscriber(Subscription subscription, Object event) {
         try {
+            //调用订阅方法
             subscription.subscriberMethod.method.invoke(subscription.subscriber, event);
         } catch (InvocationTargetException e) {
             handleSubscriberException(subscription, event, e.getCause());
