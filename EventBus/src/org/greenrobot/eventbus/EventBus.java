@@ -47,7 +47,19 @@ public class EventBus {
     private static final EventBusBuilder DEFAULT_BUILDER = new EventBusBuilder();
     private static final Map<Class<?>, List<Class<?>>> eventTypesCache = new HashMap<>();
 
+    /**
+     * 事件类型与订阅对象列表的一个map集合
+     *
+     * key -> eventType 事件类型
+     * value -> Subscription 订阅对象列表，这里 Subscription 是订阅者与订阅方法的一个封装类
+     */
     private final Map<Class<?>, CopyOnWriteArrayList<Subscription>> subscriptionsByEventType;
+    /**
+     * 记录订阅者与其订阅的所有事件类型列表的一个map集合
+     *
+     * key -> 订阅者
+     * value -> 订阅者订阅的所有事件类型列表
+     */
     private final Map<Object, List<Class<?>>> typesBySubscriber;
     private final Map<Class<?>, Object> stickyEvents;
 
@@ -153,35 +165,50 @@ public class EventBus {
 
     // Must be called in synchronized block
     private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
+        //通过订阅方法获得事件类型参数
         Class<?> eventType = subscriberMethod.eventType;
+        //通过订阅者与订阅方法来构造出一个 订阅对象
         Subscription newSubscription = new Subscription(subscriber, subscriberMethod);
+        //通过事件类型，找到 订阅对象的集合，这边是以 CopyOnWriteArrayList 的形式
         CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
         if (subscriptions == null) {
+            //如果订阅对象集合为空，则表明还没有注册过订阅了该类型事件的订阅方法。
+            //新建一个list，然后将 该事件类型与这个新建的list，放入 subscriptionsByEventType Map 中
             subscriptions = new CopyOnWriteArrayList<>();
             subscriptionsByEventType.put(eventType, subscriptions);
         } else {
+            //如果这个订阅对象集合中已经包含该newSubscription
             if (subscriptions.contains(newSubscription)) {
+                //抛出异常来提示用户，该订阅者已经订阅了这个类型的事件
                 throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
                         + eventType);
             }
         }
 
+        //遍历 订阅对象列表
         int size = subscriptions.size();
         for (int i = 0; i <= size; i++) {
+            //如果订阅方法中有声明优先级，则根据优先级，将该订阅方法加入到指定位置
+            //否则，将该订阅方法加入到订阅对象列表的末尾
             if (i == size || subscriberMethod.priority > subscriptions.get(i).subscriberMethod.priority) {
                 subscriptions.add(i, newSubscription);
                 break;
             }
         }
 
+        //通过订阅者来找到 其订阅的所有事件的类型列表 subscribedEvents
         List<Class<?>> subscribedEvents = typesBySubscriber.get(subscriber);
+        //如果该订阅者还没有任何订阅方法
         if (subscribedEvents == null) {
+            //新建一个列表，用来放这个订阅者所有的事件类型
             subscribedEvents = new ArrayList<>();
+            //并将该订阅者与这个新建的列表，放入到 typesBySubscriber map 中
             typesBySubscriber.put(subscriber, subscribedEvents);
         }
+        //将该事件类型加入到 事件类型列表中
         subscribedEvents.add(eventType);
 
-        //如果是粘性事件
+        //如果订阅方法支持粘性事件
         if (subscriberMethod.sticky) {
             if (eventInheritance) {
                 // Existing sticky events of all subclasses of eventType have to be considered.
@@ -228,12 +255,14 @@ public class EventBus {
 
     /** Only updates subscriptionsByEventType, not typesBySubscriber! Caller must update typesBySubscriber. */
     private void unsubscribeByEventType(Object subscriber, Class<?> eventType) {
+        //通过事件类型来找到相关的订阅对象列表
         List<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
         if (subscriptions != null) {
             int size = subscriptions.size();
             for (int i = 0; i < size; i++) {
                 Subscription subscription = subscriptions.get(i);
                 if (subscription.subscriber == subscriber) {
+                    //从订阅对象列表中找到该订阅者，将其 active 状态改为 false，并从订阅对象列表中移除
                     subscription.active = false;
                     subscriptions.remove(i);
                     i--;
@@ -245,13 +274,18 @@ public class EventBus {
 
     /** Unregisters the given subscriber from all event classes. */
     public synchronized void unregister(Object subscriber) {
+        //通过订阅者找到其订阅的所有事件类型列表
         List<Class<?>> subscribedTypes = typesBySubscriber.get(subscriber);
         if (subscribedTypes != null) {
+            //遍历事件类型列表
             for (Class<?> eventType : subscribedTypes) {
+                //通过事件类型，注销订阅者
                 unsubscribeByEventType(subscriber, eventType);
             }
+            //将该订阅者从typesBySubscriber map 中移除
             typesBySubscriber.remove(subscriber);
         } else {
+            //log提示：在没有注册的前提下执行了注销动作
             logger.log(Level.WARNING, "Subscriber to unregister was not registered before: " + subscriber.getClass());
         }
     }

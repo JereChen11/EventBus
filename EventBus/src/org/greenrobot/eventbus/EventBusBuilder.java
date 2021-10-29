@@ -122,7 +122,11 @@ public class EventBusBuilder {
         return this;
     }
 
-    /** Forces the use of reflection even if there's a generated index (default: false). */
+    /** Forces the use of reflection even if there's a generated index (default: false).
+     *
+     * 即使有生成的索引，强制使用反射，(默认为:false)。
+     *
+     * */
     public EventBusBuilder ignoreGeneratedIndex(boolean ignoreGeneratedIndex) {
         this.ignoreGeneratedIndex = ignoreGeneratedIndex;
         return this;

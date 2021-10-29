@@ -73,6 +73,7 @@ class SubscriberMethodFinder {
         }
         if (subscriberMethods.isEmpty()) {
             //如果没有找到任何订阅方法，抛出异常，提醒用户使用 @Subscribe 方法来声明订阅方法
+            //也就是说，如果用户register注册了，但是没有任何@Subscribe订阅方法，会抛出异常来提示用户
             throw new EventBusException("Subscriber " + subscriberClass
                     + " and its super classes have no public methods with the @Subscribe annotation");
         } else {
@@ -152,6 +153,7 @@ class SubscriberMethodFinder {
         findState.initForSubscriber(subscriberClass);
         while (findState.clazz != null) {
             findUsingReflectionInSingleClass(findState);
+            //查找父类，具体执行要看 skipSuperClasses 标志位
             findState.moveToSuperclass();
         }
         return getMethodsAndRelease(findState);
@@ -166,6 +168,9 @@ class SubscriberMethodFinder {
         Method[] methods;
         try {
             // This is faster than getMethods, especially when subscribers are fat classes like Activities
+            // getMethods(): 返回由类或接口声明的以及从超类和超接口继承的所有公共方法。
+            // getDeclaredMethods(): 返回类声明的方法，包括 public, protected, default (package)，但不包括继承的方法
+            // 所以，相对比于 getMethods 方法，该方法速度更加快，尤其是在复杂的类中，如 Activity。
             methods = findState.clazz.getDeclaredMethods();
         } catch (Throwable th) {
             // Workaround for java.lang.NoClassDefFoundError, see https://github.com/greenrobot/EventBus/issues/149
@@ -174,27 +179,33 @@ class SubscriberMethodFinder {
             } catch (LinkageError error) { // super class of NoClassDefFoundError to be a bit more broad...
                 String msg = "Could not inspect methods of " + findState.clazz.getName();
                 if (ignoreGeneratedIndex) {
+                    //请考虑使用 EventBus annotation processor 来避免反射
                     msg += ". Please consider using EventBus annotation processor to avoid reflection.";
                 } else {
                     msg += ". Please make this class visible to EventBus annotation processor to avoid reflection.";
                 }
+                //找不到该类中方法，抛出异常
                 throw new EventBusException(msg, error);
             }
+            // 设置不去检查超类
             findState.skipSuperClasses = true;
         }
+        //遍历找到的方法
         for (Method method : methods) {
+            //获取方法修饰符: public->1;private->2;protected->4;static->8;final->16
             int modifiers = method.getModifiers();
             if ((modifiers & Modifier.PUBLIC) != 0 && (modifiers & MODIFIERS_IGNORE) == 0) {
-                //找到方法的参数
+                //获取方法参数类型
                 Class<?>[] parameterTypes = method.getParameterTypes();
                 if (parameterTypes.length == 1) {
-                    //通过注解找到 Subscribe
+                    //获取方法的注解 Subscribe
                     Subscribe subscribeAnnotation = method.getAnnotation(Subscribe.class);
                     if (subscribeAnnotation != null) {
                         //第一个参数就是事件类型
                         Class<?> eventType = parameterTypes[0];
                         if (findState.checkAdd(method, eventType)) {
                             ThreadMode threadMode = subscribeAnnotation.threadMode();
+                            //根据找到的参数来新建一个订阅方法，加入 subscriberMethods 列表中
                             findState.subscriberMethods.add(new SubscriberMethod(method, eventType, threadMode,
                                     subscribeAnnotation.priority(), subscribeAnnotation.sticky()));
                         }

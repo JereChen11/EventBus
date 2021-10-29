@@ -19,14 +19,17 @@ import java.lang.reflect.Method;
 
 /** Used internally by EventBus and generated subscriber indexes.
  *
- * 订阅方法
+ * 订阅方法。在需要订阅事件的地方（如Activity），采用注解的形式来订阅。
+ * 如：@Subscribe(threadMode = ThreadMode.MAIN, priority = 8, sticky = true)
  *
  * */
 public class SubscriberMethod {
     final Method method;
     final ThreadMode threadMode;
     final Class<?> eventType;
+    /** 优先级 */
     final int priority;
+    /** 是否为粘性事件 */
     final boolean sticky;
     /** Used for efficient comparison */
     String methodString;
@@ -54,9 +57,13 @@ public class SubscriberMethod {
         }
     }
 
+    /**
+     * 将 Method 部分参数组合成 String 的形式来进行对比
+     */
     private synchronized void checkMethodString() {
         if (methodString == null) {
             // Method.toString has more overhead, just take relevant parts of the method
+            // 使用 Method.toString 会有更大的开销，所以这里只采取跟方法相关的部分
             StringBuilder builder = new StringBuilder(64);
             builder.append(method.getDeclaringClass().getName());
             builder.append('#').append(method.getName());
