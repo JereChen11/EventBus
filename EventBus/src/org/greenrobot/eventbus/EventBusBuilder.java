@@ -93,6 +93,10 @@ public class EventBusBuilder {
      * <p/>
      * However, keep in mind that event posting usually consumes just a small proportion of CPU time inside an app,
      * unless it is posting at high rates, e.g. hundreds/thousands of events per second.
+     *
+     *
+     * 默认情况下，EventBus考虑事件类的层次结构(超类的订阅者将被通知)。
+     * 通过设置为false来关闭该功能，关闭后，事件的传送速度会得到20%的提升
      */
     public EventBusBuilder eventInheritance(boolean eventInheritance) {
         this.eventInheritance = eventInheritance;

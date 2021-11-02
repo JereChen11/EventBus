@@ -300,7 +300,9 @@ public class EventBus {
         if (!postingState.isPosting) {
             //检查是否在主线程中
             postingState.isMainThread = isMainThread();
+            //设置为正在发送
             postingState.isPosting = true;
+            //检查是否取消发送，如果取消发送，将抛出异常
             if (postingState.canceled) {
                 throw new EventBusException("Internal error. Abort state was not reset");
             }
@@ -452,8 +454,10 @@ public class EventBus {
     private boolean postSingleEventForEventType(Object event, PostingThreadState postingState, Class<?> eventClass) {
         CopyOnWriteArrayList<Subscription> subscriptions;
         synchronized (this) {
+            //根据事件类型，查询订阅该类型事件的订阅者列表
             subscriptions = subscriptionsByEventType.get(eventClass);
         }
+        //如果订阅者列表不为空，则遍历它，将事件发送给这些订阅者
         if (subscriptions != null && !subscriptions.isEmpty()) {
             for (Subscription subscription : subscriptions) {
                 postingState.event = event;
@@ -477,6 +481,7 @@ public class EventBus {
     }
 
     private void postToSubscription(Subscription subscription, Object event, boolean isMainThread) {
+        //根据事件分发所处的线程来选择使用那种方式来分发该事件
         switch (subscription.subscriberMethod.threadMode) {
             case POSTING:
                 invokeSubscriber(subscription, event);
@@ -556,7 +561,7 @@ public class EventBus {
 
     void invokeSubscriber(Subscription subscription, Object event) {
         try {
-            //调用订阅方法
+            //利用反射调用订阅方法
             subscription.subscriberMethod.method.invoke(subscription.subscriber, event);
         } catch (InvocationTargetException e) {
             handleSubscriberException(subscription, event, e.getCause());
