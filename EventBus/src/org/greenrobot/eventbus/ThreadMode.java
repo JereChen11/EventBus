@@ -18,6 +18,7 @@ package org.greenrobot.eventbus;
 /**
  * Each subscriber method has a thread mode, which determines in which thread the method is to be called by EventBus.
  * EventBus takes care of threading independently from the posting thread.
+ * 每个订阅者都会有一个线程模式，线程模式决定其订阅方法运行在哪个线程中
  * 
  * @see EventBus#register(Object)
  * @author Markus

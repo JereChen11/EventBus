@@ -58,8 +58,8 @@ class SubscriberMethodFinder {
     /**
      * 找到订阅方法
      *
-     * @param subscriberClass
-     * @return
+     * @param subscriberClass 订阅者类
+     * @return 订阅方法列表
      */
     List<SubscriberMethod> findSubscriberMethods(Class<?> subscriberClass) {
         //先从缓存里找订阅方法
@@ -69,6 +69,7 @@ class SubscriberMethodFinder {
             return subscriberMethods;
         }
 
+        //是否使用 subscriber index，ignoreGeneratedIndex默认为false
         if (ignoreGeneratedIndex) {
             subscriberMethods = findUsingReflection(subscriberClass);
         } else {
@@ -90,21 +91,28 @@ class SubscriberMethodFinder {
         //从FindState池中获取一个FindState对象并进行初始化
         FindState findState = prepareFindState();
         findState.initForSubscriber(subscriberClass);
-        //todo 这里为何用一个While循环？？
+        //这里使用了一个while循环，表示子类查找完了，会去父类继续查找
         while (findState.clazz != null) {
+            //去 index 中查找订阅信息
             findState.subscriberInfo = getSubscriberInfo(findState);
             if (findState.subscriberInfo != null) {
                 SubscriberMethod[] array = findState.subscriberInfo.getSubscriberMethods();
+                //遍历订阅方法
                 for (SubscriberMethod subscriberMethod : array) {
+                    //检查是否已经添加了该订阅方法
                     if (findState.checkAdd(subscriberMethod.method, subscriberMethod.eventType)) {
+                        //未添加，将找到的订阅方法添加到订阅方法列表中
                         findState.subscriberMethods.add(subscriberMethod);
                     }
                 }
             } else {
+                //使用放射方法来查找订阅方法
                 findUsingReflectionInSingleClass(findState);
             }
+            //查找父类
             findState.moveToSuperclass();
         }
+        //返回订阅方法列表
         return getMethodsAndRelease(findState);
     }
 
@@ -145,14 +153,18 @@ class SubscriberMethodFinder {
     }
 
     private SubscriberInfo getSubscriberInfo(FindState findState) {
+        //subscriberInfo 不为空，表示已经找到了订阅信息，则这次需要往父类查找
         if (findState.subscriberInfo != null && findState.subscriberInfo.getSuperSubscriberInfo() != null) {
             SubscriberInfo superclassInfo = findState.subscriberInfo.getSuperSubscriberInfo();
+            //确定此次查找的正是父类
             if (findState.clazz == superclassInfo.getSubscriberClass()) {
                 return superclassInfo;
             }
         }
+        //subscriberInfoIndexes 就是 EventBus.addIndex(MyEventBusIndex()) 加进来的
         if (subscriberInfoIndexes != null) {
             for (SubscriberInfoIndex index : subscriberInfoIndexes) {
+                //就是执行 MyEventBusIndex 类中的 getSubscriberInfo 方法，来获取订阅信息
                 SubscriberInfo info = index.getSubscriberInfo(findState.clazz);
                 if (info != null) {
                     return info;
@@ -221,7 +233,7 @@ class SubscriberMethodFinder {
                         Class<?> eventType = parameterTypes[0];
                         //检查是否已经添加了订阅该类型事件的订阅方法，true->没有添加；false->已添加
                         if (findState.checkAdd(method, eventType)) {
-                            //没有添加过，根据找到的参数来新建一个订阅方法，加入 subscriberMethods 列表中
+                            //没有添加过，根据找到的参数来新建一个订阅方法对象，加入 subscriberMethods 列表中
                             ThreadMode threadMode = subscribeAnnotation.threadMode();
                             findState.subscriberMethods.add(new SubscriberMethod(method, eventType, threadMode,
                                     subscribeAnnotation.priority(), subscribeAnnotation.sticky()));
@@ -247,7 +259,6 @@ class SubscriberMethodFinder {
     static class FindState {
         final List<SubscriberMethod> subscriberMethods = new ArrayList<>();
         final Map<Class, Object> anyMethodByEventType = new HashMap<>();
-        //
         final Map<String, Class> subscriberClassByMethodKey = new HashMap<>();
         final StringBuilder methodKeyBuilder = new StringBuilder(128);
 
@@ -287,6 +298,7 @@ class SubscriberMethodFinder {
                 return true;
             } else {
                 //已经存在订阅该类型事件的订阅方法了
+                //existing就是先存入anyMethodByEventType的订阅统一类型事件的订阅方法
                 if (existing instanceof Method) {
                     if (!checkAddWithMethodSignature((Method) existing, eventType)) {
                         // Paranoia check
