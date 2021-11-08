@@ -106,7 +106,7 @@ class SubscriberMethodFinder {
                     }
                 }
             } else {
-                //使用放射方法来查找订阅方法
+                //如果EventBusIndex返回的订阅方法为空，则使用反射方法来查找订阅方法
                 findUsingReflectionInSingleClass(findState);
             }
             //查找父类
@@ -144,11 +144,13 @@ class SubscriberMethodFinder {
             for (int i = 0; i < POOL_SIZE; i++) {
                 FindState state = FIND_STATE_POOL[i];
                 if (state != null) {
+                    //如果当前位置的对象不为空，return出去，并置空
                     FIND_STATE_POOL[i] = null;
                     return state;
                 }
             }
         }
+        //如果池是空的，则新建一个 FindState 对象
         return new FindState();
     }
 
